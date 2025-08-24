@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wagon Trail Hunter: Explorer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        :root {
+            --primary-color: #f5e1c3; /* Parchment */
+            --secondary-color: #3e2e21; /* Dark Brown */
+            --accent-color: #c94a3d; /* Red */
+            --win-color: #28a745; /* Green */
+            --ui-bg: rgba(62, 46, 33, 0.75);
+            --water-color: #4c92c8;
+            --grass-color: #78a355;
+            --bonus-color: #ffc107; /* Gold */
+            --about-blue: #4c92c8;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--secondary-color);
+            color: var(--primary-color);
+            font-family: 'Press Start 2P', cursive;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            border: 8px solid var(--secondary-color);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(0,0,0,0.5);
+            background-color: var(--grass-color);
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #game-canvas {
+            display: block;
+            background-color: transparent;
+            transition: filter 0.2s ease-in-out;
+        }
+        
+        #game-canvas.distorted {
+            filter: hue-rotate(90deg) saturate(2) blur(4px);
+        }
+        #game-canvas.wavy {
+            filter: hue-rotate(90deg) saturate(2) url(#wavy-filter);
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            font-size: 1.2em; /* Adjusted for more text */
+            text-shadow: 2px 2px 0 var(--secondary-color);
+        }
+
+        #score-display, #health-display, #ammo-display, #multiples-display {
+            background: var(--ui-bg);
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 2px solid var(--primary-color);
+        }
+        
+        .ui-right-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        #health-display {
+            color: var(--accent-color);
+        }
+
+        .screen-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            z-index: 10;
+        }
+        
+        .screen-overlay h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+            text-shadow: 3px 3px 0 var(--accent-color);
+        }
+
+        #win-screen h1 {
+            text-shadow: 3px 3px 0 var(--win-color);
+        }
+         #about-screen h1 {
+            text-shadow: 3px 3px 0 var(--about-blue);
+        }
+        
+        .screen-overlay p {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .screen-overlay button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5em;
+            padding: 15px 30px;
+            border: 3px solid var(--primary-color);
+            background: var(--accent-color);
+            color: var(--primary-color);
+            cursor: pointer;
+            border-radius: 5px;
+            text-shadow: 2px 2px 0 var(--secondary-color);
+            transition: transform 0.1s ease, background-color 0.1s ease;
+        }
+        
+        #win-screen button {
+             background: var(--win-color);
+        }
+        
+        .screen-overlay button:hover {
+            transform: scale(1.05);
+        }
+        #win-screen button:hover { background: #34c759; }
+
+        .screen-overlay button:active {
+            transform: scale(0.98);
+        }
+        
+        .start-button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #about-button {
+            background-color: var(--about-blue);
+            padding: 15px; /* Adjust padding for emoji */
+        }
+        #about-button:hover {
+            background-color: #5ca9e0;
+        }
+
+        #start-screen .instructions {
+            margin-top: 20px;
+            font-size: 0.8em;
+            max-width: 500px;
+        }
+        
+        #about-screen .about-content {
+            font-size: 0.7em;
+            max-width: 600px;
+            text-align: left;
+            margin-bottom: 20px;
+            background: var(--ui-bg);
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid var(--primary-color);
+        }
+        #about-screen .about-content p {
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        #about-screen .about-content strong {
+            color: var(--bonus-color);
+        }
+        
+        .final-score {
+            font-size: 1.5em;
+            color: var(--bonus-color);
+            margin-top: 10px;
+        }
+        
+        #mobile-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            display: none;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 20px;
+            pointer-events: none;
+            z-index: 20;
+        }
+        
+        .d-pad, .control-btn, #shoot-btn { pointer-events: all; }
+        
+        .d-pad { display: grid; grid-template-areas: ". up ." "left . right" ". down ."; gap: 5px; }
+        
+        .control-btn {
+            width: 60px; height: 60px; background: var(--ui-bg); border: 2px solid var(--primary-color);
+            border-radius: 50%; color: var(--primary-color); font-size: 2em;
+            display: flex; justify-content: center; align-items: center; opacity: 0.8;
+        }
+        .control-btn.active { background-color: var(--primary-color); color: var(--secondary-color); }
+        
+        #up-btn { grid-area: up; }
+        #down-btn { grid-area: down; }
+        #left-btn { grid-area: left; }
+        #right-btn { grid-area: right; }
+        
+        #shoot-btn { width: 90px; height: 90px; font-size: 1.5em; border-radius: 50%; }
+
+        .hidden { display: none; }
+
+        .particle {
+            position: absolute; background-color: var(--accent-color); border-radius: 50%;
+            pointer-events: none; opacity: 1; transition: transform 0.5s ease-out, opacity 0.5s ease-out; z-index: 5;
+        }
+
+        .floating-score {
+            position: absolute; pointer-events: none; font-family: 'Press Start 2P', cursive;
+            font-size: 1.2em; color: var(--bonus-color); text-shadow: 2px 2px 0 var(--secondary-color);
+            transition: transform 1.5s ease-out, opacity 1.5s ease-out; will-change: transform, opacity; z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <audio id="audio-ammo" src="ammo_pickup.mp3" preload="auto"></audio>
+    <audio id="audio-bite" src="bite.mp3" preload="auto"></audio>
+    <audio id="audio-game-over" src="game_over.mp3" preload="auto"></audio>
+    <audio id="audio-gunshot" src="gunshot.mp3" preload="auto"></audio>
+    <audio id="audio-killshot" src="killshot.mp3" preload="auto"></audio>
+    <audio id="audio-mushroom" src="mushroom.mp3" preload="auto"></audio>
+    <audio id="audio-no-ammo" src="no_ammo.mp3" preload="auto"></audio>
+    <audio id="audio-speed-up" src="speed_up.mp3" preload="auto"></audio>
+    <audio id="audio-slow-down" src="slow_down.mp3" preload="auto"></audio>
+    <audio id="audio-spit" src="spit.mp3" preload="auto"></audio>
+    <audio id="audio-move" src="move.mp3" preload="auto"></audio>
+    <audio id="audio-intro" src="intro.mp3" preload="auto"></audio>
+    <audio id="audio-win" src="win.mp3" preload="auto"></audio>
+
+    <svg style="display: none;">
+        <filter id="wavy-filter">
+            <feTurbulence baseFrequency="0.02 0.02" numOctaves="3" seed="2" type="fractalNoise" result="turbulence" />
+            <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="15" xChannelSelector="R" yChannelSelector="G" />
+            <animate attributeName="baseFrequency" dur="10s" keyTimes="0;0.5;1" values="0.02 0.02;0.04 0.04;0.02 0.02" repeatCount="indefinite" />
+        </filter>
+    </svg>
+
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="ui-overlay">
+            <div id="health-display">❤️❤️❤️</div>
+            <div id="score-display">Meat: 0</div>
+            <div class="ui-right-group">
+                <div id="ammo-display">Ammo: 10</div>
+                <div id="multiples-display">Multiples of: ?</div>
+            </div>
+        </div>
+
+        <div id="start-screen" class="screen-overlay">
+            <h1>Wagon Trail Hunter</h1>
+            <p>Hunt for meat, but watch your back!</p>
+            <div class="instructions">
+                <p><strong>Goal:</strong> Collect all numbers that are multiples of the number shown at the top of the screen to win. Be careful, touching a wrong number has consequences!</p>
+                <p><strong>Controls:</strong> Arrow Keys - Move, Spacebar - Shoot</p>
+            </div>
+            <div class="start-button-container">
+                <button id="start-button">Start Hunting</button>
+                <button id="about-button">💫</button>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="screen-overlay hidden">
+            <h1>Game Over</h1>
+            <p>You succumbed to the wilderness...</p>
+            <p class="final-score" id="lose-score-display">Total Meat: 0</p>
+            <button id="restart-button-lose">Try Again</button>
+        </div>
+        
+        <div id="win-screen" class="screen-overlay hidden">
+            <h1>You Win!</h1>
+            <p>You collected all the multiples!</p>
+            <p class="final-score" id="win-score-display">Total Meat: 0</p>
+            <button id="restart-button-win">Play Again</button>
+        </div>
+        
+        <div id="about-screen" class="screen-overlay hidden">
+            <h1>About</h1>
+            <div class="about-content">
+                <p><strong>App Name and Version:</strong> NumberHunter v1.1.0</p>
+                <p><strong>Description:</strong> Collect all the multiples of your assigned number, but watch your back! Will you survive?</p>
+                <p><strong>Developer/Company Info:</strong> Adam N. Butcher | 360v | go360v@gmail.com</p>
+                <p><strong>Release Notes:</strong> Initial release</p>
+                <p><strong>Terms of Service and Privacy Policy:</strong> LICENSE</p>
+                <p><strong>Contact/Support Information:</strong> go360v@gmail.com</p>
+                <p><strong>Acknowledgments:</strong> Developed with the assistance of Google AI Studio.</p>
+            </div>
+            <button id="close-about-button">Back</button>
+        </div>
+    </div>
+    
+    <div id="mobile-controls">
+        <div class="d-pad">
+            <button id="up-btn" class="control-btn">▲</button>
+            <button id="down-btn" class="control-btn">▼</button>
+            <button id="left-btn" class="control-btn">◀</button>
+            <button id="right-btn" class="control-btn">▶</button>
+        </div>
+        <button id="shoot-btn" class="control-btn">SHOOT</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const gameContainer = document.getElementById('game-container');
+            const healthDisplay = document.getElementById('health-display');
+            const scoreDisplay = document.getElementById('score-display');
+            const ammoDisplay = document.getElementById('ammo-display');
+            const multiplesDisplay = document.getElementById('multiples-display');
+            const startScreen = document.getElementById('start-screen');
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const winScreen = document.getElementById('win-screen');
+            const startButton = document.getElementById('start-button');
+            const restartButtonLose = document.getElementById('restart-button-lose');
+            const restartButtonWin = document.getElementById('restart-button-win');
+            const winScoreDisplay = document.getElementById('win-score-display');
+            const loseScoreDisplay = document.getElementById('lose-score-display');
+            const mobileControls = document.getElementById('mobile-controls');
+            
+            const aboutButton = document.getElementById('about-button');
+            const aboutScreen = document.getElementById('about-screen');
+            const closeAboutButton = document.getElementById('close-about-button');
+
+            const waterColor = getComputedStyle(document.documentElement).getPropertyValue('--water-color');
+            const secondaryColor = getComputedStyle(document.documentElement).getPropertyValue('--secondary-color');
+
+            const MAP_SCALE = 5;
+            let canvasWidth, canvasHeight, worldWidth, worldHeight;
+            let camera = { x: 0, y: 0 };
+            
+            function resizeCanvas() {
+                const aspectRatio = 16 / 9;
+                const containerWidth = window.innerWidth * 0.95;
+                const containerHeight = window.innerHeight * 0.95;
+                let newWidth, newHeight;
+                if (containerWidth / containerHeight > aspectRatio) {
+                    newHeight = containerHeight; newWidth = newHeight * aspectRatio;
+                } else {
+                    newWidth = containerWidth; newHeight = newWidth / aspectRatio;
+                }
+                gameContainer.style.width = `${newWidth}px`;
+                gameContainer.style.height = `${newHeight}px`;
+                canvas.width = newWidth; canvas.height = newHeight;
+                canvasWidth = canvas.width; canvasHeight = canvas.height;
+                worldWidth = canvasWidth * MAP_SCALE; worldHeight = canvasHeight * MAP_SCALE;
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            let player, animals, bullets, enemyProjectiles, pickups, obstacles, numbers;
+            let score, health, ammo;
+            let keys = {};
+            let lastShotTime = 0;
+            let lastMoveSoundTime = 0;
+            let isGameOver = true;
+            let gameLoopId;
+
+            let multiplesNumber, totalMultiplesOnMap;
+            let activeEffect = 'none';
+            let effectTimeout, speedBoostTimeout, speedDecreaseTimeout;
+            let isSpeedBoostActive = false, isSpeedDecreaseActive = false;
+            const singleMushroomEffects = ['invert', 'wavy', 'vignette', 'slow', 'distorted'];
+
+            const PLAYER_SIZE = 30;
+            const PLAYER_SPEED = 4;
+            const BULLET_SPEED = 10;
+            const BULLET_COOLDOWN = 300;
+            const MUSHROOM_KILL_BONUS = 50;
+            const WATER_SLOWDOWN_FACTOR = 0.65;
+
+            const ANIMAL_TYPES = {
+                '🐰': { size: 25, speed: 3, health: 1, meat: 10,  shoots: false, aggroRange: 0 },
+                '🦌': { size: 40, speed: 2.5, health: 2, meat: 50,  shoots: false, aggroRange: 150 },
+                '🐺': { size: 35, speed: 3.5, health: 3, meat: 60,  shoots: false, aggroRange: 400, aggressive: true },
+                '🐻': { size: 50, speed: 1.5, health: 5, meat: 100, shoots: false, aggroRange: 250, aggressive: true },
+                '🐗': { size: 35, speed: 2, health: 3, meat: 75,  shoots: true, projectile: '💨', shootCooldown: 2000, aggroRange: 300 },
+                '🐃': { size: 55, speed: 2, health: 8, meat: 150, shoots: false, aggroRange: 200, aggressive: true }
+            };
+            const PICKUP_TYPES = { '📦': { type: 'ammo', value: 10 }, '🍄': { type: 'mushroom' } };
+
+            function playSound(id) {
+                const sound = document.getElementById(id);
+                if (sound) {
+                    sound.currentTime = 0;
+                    sound.play().catch(e => console.error(`Error playing sound ${id}:`, e));
+                }
+            }
+
+            class GameObject {
+                constructor(x, y, size, emoji) { this.x = x; this.y = y; this.size = size; this.emoji = emoji; }
+                draw() {
+                    const screenX = this.x - camera.x; const screenY = this.y - camera.y;
+                    ctx.font = `${this.size}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(this.emoji, screenX, screenY);
+                }
+            }
+            
+            class NumberObject extends GameObject {
+                constructor(x, y, value) {
+                    super(x, y, 30, value.toString());
+                    this.value = value;
+                }
+                draw() {
+                    const screenX = this.x - camera.x; const screenY = this.y - camera.y;
+                    ctx.font = `bold ${this.size}px 'Press Start 2P'`;
+                    ctx.fillStyle = '#f5e1c3'; // primary color
+                    ctx.strokeStyle = '#3e2e21'; // secondary color
+                    ctx.lineWidth = 4;
+                    ctx.strokeText(this.emoji, screenX, screenY);
+                    ctx.fillText(this.emoji, screenX, screenY);
+                }
+            }
+            
+            class Obstacle {
+                constructor(x, y, width, height, type) { this.x=x;this.y=y;this.width=width;this.height=height;this.type=type;this.emoji=type==='tree'?'🌲':'🪨'; }
+                draw() {
+                    const screenX = this.x - camera.x; const screenY = this.y - camera.y;
+                    if (screenX > canvasWidth || screenX + this.width < 0 || screenY > canvasHeight || screenY + this.height < 0) return;
+                    if (this.type === 'water') {
+                        ctx.fillStyle = secondaryColor; const borderOffset = 5;
+                        ctx.fillRect(screenX - borderOffset, screenY - borderOffset, this.width + 2 * borderOffset, this.height + 2 * borderOffset);
+                        ctx.fillStyle = waterColor; ctx.fillRect(screenX, screenY, this.width, this.height);
+                    } else {
+                        ctx.fillStyle = secondaryColor; ctx.font = `${this.width}px sans-serif`;
+                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                        ctx.fillText(this.emoji, screenX + this.width / 2, screenY + this.height / 2);
+                    }
+                }
+            }
+
+            class Player extends GameObject {
+                constructor(x, y) { super(x, y, PLAYER_SIZE, '🤠'); this.lastDir = { x: 0, y: -1 }; }
+                update() {
+                    let dx = 0, dy = 0;
+                    let up = keys['ArrowUp'] || keys['up-btn'], down = keys['ArrowDown'] || keys['down-btn'],
+                        left = keys['ArrowLeft'] || keys['left-btn'], right = keys['ArrowRight'] || keys['right-btn'];
+                    if (activeEffect === 'invert') { [up, down] = [down, up]; [left, right] = [right, left]; }
+                    if (up) dy -= 1; if (down) dy += 1; if (left) dx -= 1; if (right) dx += 1;
+
+                    if (dx !== 0 || dy !== 0) { const mag = Math.hypot(dx, dy); this.lastDir = { x: dx / mag, y: dy / mag }; }
+                    
+                    let speedModifier = 1.0;
+                    if (activeEffect === 'vignette') speedModifier *= 1.6;
+                    else if (activeEffect === 'slow') speedModifier *= 0.2;
+                    if (isSpeedBoostActive) speedModifier *= 1.4;
+                    if (isSpeedDecreaseActive) speedModifier *= 0.4;
+                    if (isOnWater(this.x, this.y, this.size)) speedModifier *= WATER_SLOWDOWN_FACTOR;
+
+                    let currentSpeed = PLAYER_SPEED * speedModifier;
+                    let nextX = this.x + (dx * currentSpeed), nextY = this.y + (dy * currentSpeed);
+                    nextX = Math.max(this.size / 2, Math.min(worldWidth - this.size / 2, nextX));
+                    nextY = Math.max(this.size / 2, Math.min(worldHeight - this.size / 2, nextY));
+                    if (!checkObstacleCollision({x: nextX, y: this.y, size: this.size})) this.x = nextX;
+                    if (!checkObstacleCollision({x: this.x, y: nextY, size: this.size})) this.y = nextY;
+                    
+                    if ((dx !== 0 || dy !== 0) && Date.now() - lastMoveSoundTime > (2000 / currentSpeed)) {
+                        playSound('audio-move');
+                        lastMoveSoundTime = Date.now();
+                    }
+                }
+            }
+            
+            class Bullet extends GameObject {
+                constructor(x, y, dirX, dirY) { super(x, y, 15, '💥'); this.dirX = dirX; this.dirY = dirY; }
+                update() { this.x += this.dirX * BULLET_SPEED; this.y += this.dirY * BULLET_SPEED; }
+            }
+
+            class EnemyProjectile extends Bullet {
+                constructor(x,y,dirX,dirY,emoji){super(x,y,dirX,dirY);this.emoji=emoji;this.size=20;}
+                update(){this.x+=this.dirX*(BULLET_SPEED*0.7);this.y+=this.dirY*(BULLET_SPEED*0.7);}
+            }
+
+            class Animal extends GameObject {
+                constructor(x,y,type){const c=ANIMAL_TYPES[type];super(x,y,c.size,type);Object.assign(this,c);this.lastShot=0;this.changeDirTimeout=0;const m=Math.hypot(this.dirX,this.dirY);this.dirX=(Math.random()-0.5)*2/m;this.dirY=(Math.random()-0.5)*2/m;}
+                update(){const dP=Math.hypot(this.x-player.x,this.y-player.y);if(this.aggroRange>0&&dP<this.aggroRange){const dx=player.x-this.x,dy=player.y-this.y,d=Math.hypot(dx,dy);this.dirX=dx/d;this.dirY=dy/d;}else{if(Date.now()>this.changeDirTimeout){this.dirX=(Math.random()-0.5)*2;this.dirY=(Math.random()-0.5)*2;const m=Math.hypot(this.dirX,this.dirY);this.dirX/=m;this.dirY/=m;this.changeDirTimeout=Date.now()+Math.random()*3000+1000;}}
+                let s=this.speed;if(isOnWater(this.x,this.y,this.size)){s*=WATER_SLOWDOWN_FACTOR;}
+                let nX=this.x+this.dirX*s,nY=this.y+this.dirY*s;if(checkObstacleCollision({x:nX,y:this.y,size:this.size})||nX<this.size/2||nX>worldWidth-this.size/2)this.dirX*=-1;if(checkObstacleCollision({x:this.x,y:nY,size:this.size})||nY<this.size/2||nY>worldHeight-this.size/2)this.dirY*=-1;this.x+=this.dirX*s;this.y+=this.dirY*s;if(this.shoots&&dP<this.aggroRange&&Date.now()-this.lastShot>this.shootCooldown){this.shoot();this.lastShot=Date.now();}}
+                shoot(){const dx=player.x-this.x,dy=player.y-this.y,d=Math.hypot(dx,dy);enemyProjectiles.push(new EnemyProjectile(this.x,this.y,dx/d,dy/d,this.projectile));playSound('audio-spit');}
+                takeDamage(){this.health--;createHitEffect(this.x,this.y);return this.health<=0;}
+            }
+            
+            class Pickup extends GameObject {constructor(x,y,type){super(x,y,30,type);this.type=PICKUP_TYPES[type].type;this.value=PICKUP_TYPES[type].value;}}
+
+            function generateObstacles() {
+                obstacles = [];
+                const OBSTACLE_CLUSTERS = 120, WATER_PATCHES = 40, OBSTACLES_PER_CLUSTER = 5, SAFE_ZONE_RADIUS = 300;
+                for(let i=0;i<OBSTACLE_CLUSTERS;i++){const cX=Math.random()*worldWidth,cY=Math.random()*worldHeight,cT=Math.random()>0.5?'tree':'rock';for(let j=0;j<OBSTACLES_PER_CLUSTER;j++){const s=cT==='tree'?40:30,x=cX+(Math.random()-0.5)*150,y=cY+(Math.random()-0.5)*150;const d=Math.hypot(x-worldWidth/2,y-worldHeight/2);if(d>SAFE_ZONE_RADIUS&&x>0&&x<worldWidth&&y>0&&y<worldHeight)obstacles.push(new Obstacle(x,y,s,s,cT));}}
+                for(let i=0;i<WATER_PATCHES;i++){const w=Math.random()*400+100,h=Math.random()*400+100,x=Math.random()*(worldWidth-w),y=Math.random()*(worldHeight-h);const d=Math.hypot((x+w/2)-worldWidth/2,(y+h/2)-worldHeight/2);if(d>SAFE_ZONE_RADIUS)obstacles.push(new Obstacle(x,y,w,h,'water'));}
+            }
+            
+            function generateNumbers() {
+                numbers = [];
+                totalMultiplesOnMap = 0;
+                for (let i = 1; i <= 100; i++) {
+                    const x = Math.random() * (worldWidth - 100) + 50;
+                    const y = Math.random() * (worldHeight - 100) + 50;
+                    if (!checkObstacleCollision({x, y, size: 30}) && !isOnWater(x, y, 30)) {
+                        numbers.push(new NumberObject(x, y, i));
+                        if (i % multiplesNumber === 0) {
+                            totalMultiplesOnMap++;
+                        }
+                    } else {
+                        i--; // Try again to place this number
+                    }
+                }
+            }
+
+            function init() {
+                isGameOver = false; score = 0; health = 3; ammo = 10;
+                multiplesNumber = Math.floor(Math.random() * 8) + 2; // 2 to 9
+                
+                playSound('audio-intro');
+                generateObstacles();
+                generateNumbers();
+
+                player = new Player(worldWidth / 2, worldHeight / 2);
+                animals = []; bullets = []; enemyProjectiles = []; pickups = [];
+                resetEffects(); updateUI(); startSpawning();
+                gameOverScreen.classList.add('hidden');
+                winScreen.classList.add('hidden');
+                startScreen.classList.add('hidden');
+                if (gameLoopId) cancelAnimationFrame(gameLoopId);
+                gameLoop();
+            }
+
+            function gameLoop() { if(isGameOver)return; update(); draw(); gameLoopId=requestAnimationFrame(gameLoop); }
+
+            function update() {
+                player.update();
+                if(keys[' '] && Date.now() - lastShotTime > BULLET_COOLDOWN) shoot();
+                if (activeEffect !== 'dark') { [...bullets, ...animals, ...enemyProjectiles].forEach(o => o.update()); }
+                handleCollisions();
+                bullets = bullets.filter(b=>b.x>0&&b.x<worldWidth&&b.y>0&&b.y<worldHeight);
+                enemyProjectiles=enemyProjectiles.filter(p=>p.x>0&&p.x<worldWidth&&p.y>0&&p.y<worldHeight);
+            }
+
+            function draw() {
+                camera.x=player.x-canvasWidth/2;camera.y=player.y-canvasHeight/2;
+                camera.x=Math.max(0,Math.min(worldWidth-canvasWidth,camera.x));
+                camera.y=Math.max(0,Math.min(worldHeight-canvasHeight,camera.y));
+                ctx.clearRect(0,0,canvasWidth,canvasHeight);
+                gameContainer.style.backgroundColor='var(--grass-color)';
+                
+                if(activeEffect==='dark'){ctx.fillStyle='black';ctx.fillRect(0,0,canvasWidth,canvasHeight);player.draw();return;}
+                
+                obstacles.filter(o=>o.type==='water').forEach(o=>o.draw());
+                pickups.forEach(p=>p.draw());
+                animals.forEach(a=>a.draw());
+                numbers.forEach(n=>n.draw());
+                obstacles.filter(o=>o.type!=='water').forEach(o=>o.draw());
+                player.draw();
+                bullets.forEach(b=>b.draw());
+                enemyProjectiles.forEach(p=>p.draw());
+
+                if(activeEffect==='vignette') applyVignetteEffect();
+            }
+
+            function applyVignetteEffect() {
+                const cX=canvasWidth/2,cY=canvasHeight/2,r=(canvasWidth/5)*0.2;
+                const g=ctx.createRadialGradient(cX,cY,r,cX,cY,r*2.5);
+                g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,1)');
+                ctx.fillStyle=g;ctx.fillRect(0,0,canvasWidth,canvasHeight);
+            }
+            
+            function handleCollisions() {
+                 for(let i=bullets.length-1;i>=0;i--){for(let j=animals.length-1;j>=0;j--){if(checkCircleCollision(bullets[i],animals[j])){if(animals[j].takeDamage()){playSound('audio-killshot');let m=animals[j].meat;if(activeEffect!=='none')m+=MUSHROOM_KILL_BONUS;score+=m;createFloatingScore(`+${m}`,animals[j].x,animals[j].y);animals.splice(j,1);}bullets.splice(i,1);updateUI();break;}}}
+                 let playerHit=false;
+                 for(let i=animals.length-1;i>=0;i--){if(checkCircleCollision(player,animals[i])){animals.splice(i,1);playerHit=true;break;}}
+                 if(!playerHit){for(let i=enemyProjectiles.length-1;i>=0;i--){if(checkCircleCollision(player,enemyProjectiles[i])){enemyProjectiles.splice(i,1);playerHit=true;break;}}}
+                 if(playerHit){health--;playSound('audio-bite');updateUI();createHitEffect(player.x,player.y,true);if(health<=0)endGame();}
+                 for(let i=pickups.length-1;i>=0;i--){if(checkCircleCollision(player,pickups[i])){const p=pickups[i];if(p.type==='ammo'){ammo+=p.value;playSound('audio-ammo');}else if(p.type==='mushroom'){playSound('audio-mushroom');if(activeEffect!=='none')activateDarkMode();else activateRandomMushroomEffect();}pickups.splice(i,1);updateUI();}}
+                 for(let i=numbers.length-1;i>=0;i--){if(checkCircleCollision(player,numbers[i])){const n=numbers[i];if(n.value%multiplesNumber===0){activateSpeedBoost();totalMultiplesOnMap--;if(totalMultiplesOnMap<=0){winGame();return;}}else{activateSpeedDecrease();}numbers.splice(i,1);break;}}
+            }
+            
+            function checkCircleCollision(o1,o2){return Math.hypot(o1.x-o2.x,o1.y-o2.y)<o1.size/2+o2.size/2;}
+            
+            function checkObstacleCollision(e){for(const o of obstacles.filter(o=>o.type!=='water')){const c={x:e.x,y:e.y,r:e.size/2},r={x:o.x,y:o.y,w:o.width,h:o.height};const cX=Math.max(r.x,Math.min(c.x,r.x+r.w)),cY=Math.max(r.y,Math.min(c.y,r.y+r.h));const dX=c.x-cX,dY=c.y-cY;if((dX*dX)+(dY*dY)<(c.r*c.r))return true;}return false;}
+            function isOnWater(x,y,s){for(const o of obstacles.filter(o=>o.type==='water')){const c={x:x,y:y,r:s/2},r={x:o.x,y:o.y,w:o.width,h:o.height};const cX=Math.max(r.x,Math.min(c.x,r.x+r.w)),cY=Math.max(r.y,Math.min(c.y,r.y+r.h));const dX=c.x-cX,dY=c.y-cY;if((dX*dX)+(dY*dY)<(c.r*c.r))return true;}return false;}
+
+            function shoot(){if(ammo>0){ammo--;playSound('audio-gunshot');bullets.push(new Bullet(player.x,player.y,player.lastDir.x,player.lastDir.y));lastShotTime=Date.now();updateUI();} else {playSound('audio-no-ammo');lastShotTime=Date.now();}}
+            function updateUI(){scoreDisplay.textContent=`Meat: ${score}`;ammoDisplay.textContent=`Ammo: ${ammo}`;healthDisplay.innerHTML='❤️'.repeat(health)+'🖤'.repeat(3-health);multiplesDisplay.textContent=`Multiples of: ${multiplesNumber}`;}
+
+            let spawnIntervals=[];
+            function startSpawning(){stopSpawning();const sA=()=>{if(animals.length>30)return;const t=Object.keys(ANIMAL_TYPES)[Math.floor(Math.random()*Object.keys(ANIMAL_TYPES).length)];const s=Math.random();let x,y;if(s<0.25){x=camera.x+Math.random()*canvasWidth;y=camera.y-50;}else if(s<0.5){x=camera.x+Math.random()*canvasWidth;y=camera.y+canvasHeight+50;}else if(s<0.75){x=camera.x-50;y=camera.y+Math.random()*canvasHeight;}else{x=camera.x+canvasWidth+50;y=camera.y+Math.random()*canvasHeight;}x=Math.max(0,Math.min(worldWidth,x));y=Math.max(0,Math.min(worldHeight,y));if(!checkObstacleCollision({x,y,size:ANIMAL_TYPES[t].size})&&!isOnWater(x,y,ANIMAL_TYPES[t].size))animals.push(new Animal(x,y,t));};const sP=()=>{if(pickups.length>10)return;const t=Object.keys(PICKUP_TYPES)[Math.floor(Math.random()*Object.keys(PICKUP_TYPES).length)];const x=Math.random()*worldWidth,y=Math.random()*worldHeight;if(!checkObstacleCollision({x,y,size:30})&&!isOnWater(x,y,30))pickups.push(new Pickup(x,y,t));};const aSR=Math.max(350,(2000-score)*0.7);spawnIntervals.push(setInterval(sA,aSR));spawnIntervals.push(setInterval(sP,2000));}
+            function stopSpawning(){spawnIntervals.forEach(clearInterval);spawnIntervals=[];}
+            
+            function activateSpeedBoost(){playSound('audio-speed-up');clearTimeout(speedBoostTimeout);isSpeedBoostActive=true;speedBoostTimeout=setTimeout(()=>{isSpeedBoostActive=false;},5000);}
+            function activateSpeedDecrease(){playSound('audio-slow-down');clearTimeout(speedDecreaseTimeout);isSpeedDecreaseActive=true;speedDecreaseTimeout=setTimeout(()=>{isSpeedDecreaseActive=false;},5000);}
+
+            function activateRandomMushroomEffect(){resetEffects();const cE=singleMushroomEffects[Math.floor(Math.random()*singleMushroomEffects.length)];activeEffect=cE;if(cE==='wavy'){canvas.classList.add('wavy');}else{canvas.classList.add('distorted');}effectTimeout=setTimeout(resetEffects,5000);}
+            function activateDarkMode(){resetEffects();activeEffect='dark';effectTimeout=setTimeout(resetEffects,5000);}
+            function resetEffects(){clearTimeout(effectTimeout);clearTimeout(speedBoostTimeout);clearTimeout(speedDecreaseTimeout);activeEffect='none';isSpeedBoostActive=false;isSpeedDecreaseActive=false;canvas.classList.remove('distorted','wavy');}
+
+            function createFloatingScore(t,x,y){const sE=document.createElement('div');sE.className='floating-score';sE.textContent=t;gameContainer.appendChild(sE);const sX=x-camera.x,sY=y-camera.y;sE.style.left=`${sX}px`;sE.style.top=`${sY}px`;setTimeout(()=>{sE.style.transform='translateY(-50px)';sE.style.opacity='0';},10);setTimeout(()=>{sE.remove();},1500);}
+            function createHitEffect(x,y,iP=false){const sX=x-camera.x,sY=y-camera.y;for(let i=0;i<(iP?15:8);i++){const p=document.createElement('div');p.className='particle';gameContainer.appendChild(p);const s=Math.random()*(iP?10:5)+2;p.style.width=`${s}px`;p.style.height=`${s}px`;if(iP)p.style.backgroundColor='#fff';const a=Math.random()*2*Math.PI,d=Math.random()*50+20;const tX=sX+Math.cos(a)*d,tY=sY+Math.sin(a)*d;p.style.left=`${sX}px`;p.style.top=`${sY}px`;p.getBoundingClientRect();p.style.transform=`translate(${tX-sX}px, ${tY-sY}px)`;p.style.opacity='0';setTimeout(()=>{p.remove();},500);}}
+
+            function endGame(){playSound('audio-game-over');isGameOver=true;stopSpawning();resetEffects();loseScoreDisplay.textContent=`Total Meat: ${score}`;gameOverScreen.classList.remove('hidden');}
+            function winGame(){
+                playSound('audio-win');
+                isGameOver=true;
+                stopSpawning();
+                resetEffects();
+                winScoreDisplay.textContent=`Total Meat: ${score}`;
+                winScreen.classList.remove('hidden');
+            }
+
+            window.addEventListener('keydown',e=>{keys[e.key]=true;});window.addEventListener('keyup',e=>{keys[e.key]=false;});
+            
+            // Screen switching logic
+            startButton.addEventListener('click',init);
+            restartButtonLose.addEventListener('click',init);
+            restartButtonWin.addEventListener('click',init);
+            
+            aboutButton.addEventListener('click', () => {
+                startScreen.classList.add('hidden');
+                aboutScreen.classList.remove('hidden');
+            });
+
+            closeAboutButton.addEventListener('click', () => {
+                aboutScreen.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+            });
+            
+            if(('ontouchstart' in window)||(navigator.maxTouchPoints > 0)){mobileControls.style.display='flex';document.querySelector('.instructions').style.display='none';const cB={'up-btn':'ArrowUp','down-btn':'ArrowDown','left-btn':'ArrowLeft','right-btn':'ArrowRight'};for(const[bI,k]of Object.entries(cB)){const b=document.getElementById(bI);b.addEventListener('touchstart',(e)=>{e.preventDefault();keys[k]=true;b.classList.add('active');},{passive:false});b.addEventListener('touchend',(e)=>{e.preventDefault();keys[k]=false;b.classList.remove('active');});}const sB=document.getElementById('shoot-btn');sB.addEventListener('touchstart',(e)=>{e.preventDefault();if(Date.now()-lastShotTime>BULLET_COOLDOWN)shoot();sB.classList.add('active');},{passive:false});sB.addEventListener('touchend',(e)=>{e.preventDefault();sB.classList.remove('active');});}
+        });
+    </script>
+</body>
+</html>
