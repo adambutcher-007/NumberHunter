@@ -358,6 +358,12 @@
             let canvasWidth, canvasHeight, worldWidth, worldHeight;
             let camera = { x: 0, y: 0 };
             
+			// Lower all audio volumes by 25%
+			const audioElements = document.querySelectorAll('audio');
+			audioElements.forEach(audio => {
+				audio.volume = 0.25;
+			});
+			
             function resizeCanvas() {
                 const aspectRatio = 16 / 9;
                 const containerWidth = window.innerWidth * 0.95;
